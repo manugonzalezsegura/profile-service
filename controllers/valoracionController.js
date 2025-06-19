@@ -1,15 +1,46 @@
 // /backend/profile-service/controllers/valoracionController.js
 
-const { Valoracion } = require('../models');
+const { Valoracion,Usuario } = require('../models');
 
 /**
  * POST /api/valoraciones
  */
 exports.createValoracion = async (req, res) => {
-  const { id_autor, id_receptor, rol_receptor, puntuacion, comentario } = req.body;
+  const id_autor = req.usuario.id_usuario; // 🔐 Desde el token
+  const { id_receptor, rol_receptor, puntuacion, comentario } = req.body;
+
+  console.log('📝 Intentando crear valoración...');
+  console.log('👤 Autor (desde token):', id_autor);
+  console.log('🎯 Receptor:', id_receptor);
+  console.log('🎭 Rol receptor:', rol_receptor);
+  console.log('⭐ Puntuación:', puntuacion);
+  console.log('💬 Comentario:', comentario);
 
   try {
-    const val = await Valoracion.create({
+    // Validación básica: que autor ≠ receptor
+    if (id_autor === id_receptor) {
+      return res.status(400).json({ error: 'No puedes valorarte a ti mismo' });
+    }
+
+    // Validación: que receptor exista
+    const receptor = await Usuario.findByPk(id_receptor);
+    if (!receptor) {
+      console.log('❌ Usuario receptor no existe');
+      return res.status(404).json({ error: 'Usuario receptor no encontrado' });
+    }
+
+    // (Opcional) Validar si ya existe valoración entre autor → receptor
+    const yaExiste = await Valoracion.findOne({
+      where: { id_autor, id_receptor, rol_receptor }
+    });
+
+    if (yaExiste) {
+      console.log('⚠️ Ya existe una valoración para este usuario');
+      return res.status(400).json({ error: 'Ya has valorado a este usuario' });
+    }
+
+    // Crear valoración
+    const valoracion = await Valoracion.create({
       id_autor,
       id_receptor,
       rol_receptor,
@@ -17,7 +48,8 @@ exports.createValoracion = async (req, res) => {
       comentario
     });
 
-    res.status(201).json(val);
+    console.log('✅ Valoración creada con éxito:', valoracion.id_valoracion);
+    res.status(201).json(valoracion);
 
   } catch (err) {
     console.error('❌ Error en createValoracion:', err);
@@ -25,15 +57,31 @@ exports.createValoracion = async (req, res) => {
   }
 };
 
+
+
+
 /**
  * GET /api/valoraciones/recibidas/:usuarioId
  */
 exports.listRecibidas = async (req, res) => {
   const id_receptor = Number(req.params.usuarioId);
+  console.log('📥 Buscando valoraciones recibidas por usuario ID:', id_receptor);
 
   try {
-    const vals = await Valoracion.findAll({ where: { id_receptor } });
-    res.json(vals);
+    const valoraciones = await Valoracion.findAll({
+      where: { id_receptor },
+      include: [
+        {
+          model: Usuario,
+          as: 'Autor',
+          attributes: ['id_usuario', 'nombre', 'email']
+        }
+      ],
+      order: [['creado_en', 'DESC']]
+    });
+
+    console.log(`📊 Valoraciones encontradas: ${valoraciones.length}`);
+    res.json(valoraciones);
 
   } catch (err) {
     console.error('❌ Error en listRecibidas:', err);
