@@ -6,7 +6,7 @@ const { Valoracion,Usuario } = require('../models');
  * POST /api/valoraciones
  */
 exports.createValoracion = async (req, res) => {
-  const id_autor = req.usuario.id_usuario; // 🔐 Desde el token
+  const id_autor = req.user.id_usuario;// 🔐 Desde el token
   const { id_receptor, rol_receptor, puntuacion, comentario } = req.body;
 
   console.log('📝 Intentando crear valoración...');
