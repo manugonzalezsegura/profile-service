@@ -104,3 +104,28 @@ exports.listHechas = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener valoraciones hechas' });
   }
 };
+
+
+/**
+ * GET /api/valoraciones/existe?id_autor=5&id_receptor=9&rol_receptor=inquilino
+ */
+exports.existeValoracion = async (req, res) => {
+  const id_autor = Number(req.query.id_autor);
+  const id_receptor = Number(req.query.id_receptor);
+  const rol_receptor = req.query.rol_receptor;
+
+  if (!id_autor || !id_receptor || !rol_receptor) {
+    return res.status(400).json({ error: 'Faltan parámetros requeridos' });
+  }
+
+  try {
+    const existe = await Valoracion.findOne({
+      where: { id_autor, id_receptor, rol_receptor }
+    });
+
+    res.json({ existe: !!existe });
+  } catch (err) {
+    console.error('❌ Error en existeValoracion:', err);
+    res.status(500).json({ error: 'Error al verificar existencia de valoración' });
+  }
+};
